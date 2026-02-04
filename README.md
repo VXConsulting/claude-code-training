@@ -15,9 +15,22 @@ Ce tutoriel vous apprendra à :
 
 ## Prérequis
 
-- Claude Code installé (`npm install -g @anthropic-ai/claude-code`)
+- Claude Code installé (voir ci-dessous)
+- Un abonnement Claude (Pro, Max, Teams, Enterprise) ou un compte Claude Console
 - Connaissances de base en ligne de commande
 - Un éditeur de code (VS Code recommandé)
+
+### Installation de Claude Code
+
+**macOS, Linux, WSL :**
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+**Windows PowerShell :**
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
 
 ## Structure du cours
 
@@ -49,7 +62,7 @@ Chaque module contient :
 
 ## Ressources complémentaires
 
-- [Documentation officielle Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Documentation officielle Claude Code](https://code.claude.com/docs/)
 - [Claude Code GitHub](https://github.com/anthropics/claude-code)
 
 ---

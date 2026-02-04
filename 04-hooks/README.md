@@ -81,7 +81,8 @@ Les hooks sont déclarés dans `.claude/settings.json` :
 ```
 
 **Note :** Chaque hook a maintenant un tableau `hooks` contenant des objets avec `type` et `command`.
-```
+
+---
 
 ## Le champ matcher
 

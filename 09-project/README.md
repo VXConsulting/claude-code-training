@@ -29,7 +29,7 @@ devops-assistant/
 │   ├── no-secrets.sh
 │   ├── require-tests.sh
 │   └── validate-commit.sh
-├── skills/
+├── skills/                    ← Format recommandé (skills = commandes)
 │   ├── code-review/
 │   │   └── SKILL.md
 │   ├── documentation/
@@ -38,7 +38,7 @@ devops-assistant/
 │       └── SKILL.md
 ├── agents/
 │   └── doc-generator.md
-├── commands/
+├── commands/                  ← Optionnel (alias vers skills)
 │   ├── review.md
 │   ├── docs.md
 │   └── release.md
@@ -47,6 +47,8 @@ devops-assistant/
 │       └── no-secrets.test.sh
 └── README.md
 ```
+
+**Note :** Les `commands/` et `skills/` sont fusionnés. Un skill crée automatiquement une commande `/nom-du-skill`. Le dossier `commands/` est optionnel si vous utilisez déjà `skills/`.
 
 ---
 
@@ -414,14 +416,23 @@ Generate markdown files with:
 
 ### 5.1 Commande review
 
-**`commands/review.md`**
+**Note :** Les commandes et skills ont été fusionnés. Vous pouvez soit :
+- Créer une commande dans `commands/review.md`
+- OU utiliser directement le skill `skills/code-review/SKILL.md` (recommandé)
+
+**`commands/review.md`** (si vous voulez un alias simple)
 
 ```markdown
 ---
 name: review
-description: Review staged changes
-invokes: code-review
+description: Review staged changes for quality and security
 ---
+
+Run the code-review skill: analyze staged changes and provide feedback.
+
+1. Get staged files with `git diff --staged --name-only`
+2. For each file, check code quality and security
+3. Generate a review report
 ```
 
 ### 5.2 Commande docs
@@ -431,11 +442,14 @@ invokes: code-review
 ```markdown
 ---
 name: docs
-description: Generate documentation
-invokes: documentation
+description: Generate project documentation
 ---
 
-After generating documentation, offer to commit the changes.
+Generate or update documentation for this project.
+
+1. Scan the codebase for public APIs
+2. Generate documentation in the `docs/` folder
+3. After generating, offer to commit the changes
 ```
 
 ### 5.3 Commande release
@@ -446,15 +460,23 @@ After generating documentation, offer to commit the changes.
 ---
 name: release
 description: Prepare a new release
-invokes: release
+argument-hint: [major|minor|patch]
 ---
 
+Prepare and publish a release.
+
 Arguments:
-- `major` - Major version bump
-- `minor` - Minor version bump
-- `patch` - Patch version bump
+- `major` - Major version bump (breaking changes)
+- `minor` - Minor version bump (new features)
+- `patch` - Patch version bump (bug fixes)
 
 Example: `/release minor`
+
+Process:
+1. Run all tests
+2. Update version in package.json
+3. Update CHANGELOG.md
+4. Create git tag and push
 ```
 
 ---
@@ -588,7 +610,7 @@ Votre projet est complet si :
 - [ ] Les 3 hooks fonctionnent et ont des tests
 - [ ] Les 3 skills sont bien documentés
 - [ ] L'agent doc-generator est fonctionnel
-- [ ] Les 3 commandes invoquent les bons skills
+- [ ] Les commandes `/review`, `/docs`, `/release` fonctionnent
 - [ ] Le plugin s'installe sans erreur
 - [ ] Le README explique l'installation et l'usage
 
