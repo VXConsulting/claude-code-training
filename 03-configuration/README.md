@@ -9,28 +9,50 @@
 ## Hiérarchie de configuration
 
 ```
-~/.claude/                          ← Configuration globale
-├── settings.json                   ← Paramètres Claude Code
+/etc/claude/                        ← Settings gérés (entreprise)
+└── settings.json                   ← Priorité maximale
+
+~/.claude/                          ← Configuration utilisateur
+├── settings.json                   ← Paramètres globaux
 ├── CLAUDE.md                       ← Instructions personnelles
 └── keybindings.json               ← Raccourcis clavier
 
 projet/                             ← Configuration projet
 ├── .claude/
-│   ├── settings.json              ← Paramètres projet
+│   ├── settings.json              ← Paramètres projet (partagé git)
+│   ├── settings.local.json        ← Paramètres locaux (non commités)
 │   └── rules/                     ← Règles spécifiques
 │       ├── api.md
 │       └── tests.md
-├── CLAUDE.md                       ← Instructions projet
-└── .dev-factory.yml               ← Config plugins (optionnel)
+├── .claude.json                    ← Ancienne config (obsolète)
+└── CLAUDE.md                       ← Instructions projet
 ```
 
-**Ordre de priorité :** Projet > Global
+**Ordre de priorité (du plus au moins prioritaire) :**
+1. **Managed** (`/etc/claude/settings.json`) - Pour les entreprises
+2. **CLI flags** - Options en ligne de commande
+3. **Local** (`.claude/settings.local.json`) - Non commité, pour dev local
+4. **Project** (`.claude/settings.json`) - Partagé via git
+5. **User** (`~/.claude/settings.json`) - Préférences personnelles
 
 ---
 
 ## settings.json
 
-### Emplacement global
+### Paramètres disponibles
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `permissions` | object | Règles allow/deny pour les outils |
+| `hooks` | object | Hooks par événement |
+| `env` | object | Variables d'environnement |
+| `defaultModel` | string | Modèle par défaut |
+| `contextFiles` | array | Fichiers de contexte additionnels |
+| `disableContextFiles` | boolean | Désactive les fichiers de contexte |
+| `enableCompact` | boolean | Active la compaction automatique |
+| `sandbox` | object | Configuration du sandbox |
+
+### Emplacement utilisateur
 
 `~/.claude/settings.json`
 
@@ -40,16 +62,28 @@ projet/                             ← Configuration projet
     "allow": [
       "Bash(npm test)",
       "Bash(git status)",
-      "Bash(git diff)"
+      "Bash(git diff:*)"
     ],
     "deny": [
-      "Bash(rm -rf)",
+      "Bash(rm -rf *)",
       "Bash(sudo *)"
     ]
   },
   "hooks": {
-    "PreToolUse": [],
-    "PostToolUse": []
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/global-check.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development"
   }
 }
 ```
@@ -70,8 +104,31 @@ projet/                             ← Configuration projet
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "command": "./hooks/dangerous-commands.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/dangerous-commands.sh"
+          }
+        ]
       }
+    ]
+  }
+}
+```
+
+### Emplacement local (non commité)
+
+`projet/.claude/settings.local.json`
+
+```json
+{
+  "env": {
+    "DEBUG": "true",
+    "DATABASE_URL": "postgresql://localhost/mydb_dev"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:debug)"
     ]
   }
 }
@@ -220,15 +277,25 @@ Pour des règles qui s'appliquent à certains contextes, utilisez `.claude/rules
 
 | Variable | Description |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | Clé API Anthropic |
-| `CLAUDE_MODEL` | Modèle par défaut |
-| `CLAUDE_DEBUG` | Active le mode debug |
+| `ANTHROPIC_API_KEY` | Clé API (uniquement si compte Console) |
+| `CLAUDE_CODE_API_KEY` | Alias pour ANTHROPIC_API_KEY |
+| `CLAUDE_CODE_SKIP_LOGIN` | Ignore l'authentification OAuth |
+| `CLAUDE_CODE_USE_BEDROCK` | Utilise Amazon Bedrock |
+| `CLAUDE_CODE_USE_VERTEX` | Utilise Google Vertex AI |
 | `CLAUDE_CONFIG_DIR` | Répertoire de config alternatif |
+| `CLAUDE_LOG_LEVEL` | Niveau de log (debug, info, warn, error) |
+| `CLAUDE_DISABLE_TELEMETRY` | Désactive la télémétrie |
+| `BASH_DEFAULT_TIMEOUT_MS` | Timeout des commandes Bash (défaut: 120000) |
+
+**Note :** Pour les abonnements Claude Pro/Max/Teams/Enterprise, l'authentification se fait via `/login` (OAuth). La clé API n'est nécessaire que pour les comptes Claude Console.
 
 ```bash
-# .bashrc ou .zshrc
+# .bashrc ou .zshrc (uniquement si compte Console)
 export ANTHROPIC_API_KEY="sk-ant-..."
-export CLAUDE_MODEL="claude-sonnet-4-20250514"
+
+# Ou pour les providers cloud
+export CLAUDE_CODE_USE_BEDROCK=1
+export AWS_REGION="us-east-1"
 ```
 
 ---
@@ -265,7 +332,7 @@ export CLAUDE_MODEL="claude-sonnet-4-20250514"
     "allow": [
       "Bash(npm *)",
       "Bash(git status)",
-      "Bash(git diff)"
+      "Bash(git diff:*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -274,6 +341,79 @@ export CLAUDE_MODEL="claude-sonnet-4-20250514"
   }
 }
 ```
+
+---
+
+## Syntaxe des règles de permission
+
+### Format général
+
+```
+ToolName(pattern)
+```
+
+### Patterns supportés
+
+| Pattern | Signification |
+|---------|---------------|
+| `*` | Wildcard (tout caractère) |
+| `**` | Wildcard récursif (chemins) |
+| `:*` | Tous les arguments |
+| `Read(src/**)` | Lire tout dans src/ |
+| `Bash(npm:*)` | npm avec tout argument |
+| `Write(*.test.ts)` | Écrire fichiers de test |
+
+### Exemples
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(npm test:*)",
+      "Bash(git:status|diff|log)",
+      "Write(src/**/*.ts)",
+      "Edit(src/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(*:--force)",
+      "Write(.env*)",
+      "Edit(node_modules/**)"
+    ]
+  }
+}
+```
+
+---
+
+## Configuration Sandbox
+
+Le sandbox isole l'exécution des commandes pour plus de sécurité.
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "allowedPaths": [
+      "/home/user/projects",
+      "/tmp"
+    ],
+    "deniedPaths": [
+      "/etc",
+      "/var"
+    ],
+    "networkAccess": false
+  }
+}
+```
+
+**Modes de sandbox :**
+- `enabled: true` - Active le sandbox (recommandé)
+- `enabled: false` - Désactive le sandbox
+- Via CLI : `--dangerously-skip-sandbox`
 
 ---
 
@@ -302,10 +442,11 @@ export CLAUDE_MODEL="claude-sonnet-4-20250514"
 
 ## Quiz
 
-1. Quel fichier a priorité : global ou projet ?
+1. Quel est l'ordre de priorité des fichiers settings.json ?
 2. Où placer des règles spécifiques aux tests ?
 3. Comment bloquer une commande dangereuse ?
-4. Quelle variable d'environnement définit la clé API ?
+4. Quelle est la différence entre `settings.json` et `settings.local.json` ?
+5. Comment utiliser des wildcards dans les règles de permission ?
 
 ---
 
