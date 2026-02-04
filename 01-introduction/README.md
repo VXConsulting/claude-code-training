@@ -35,25 +35,46 @@ Claude Code est un **agent de programmation agentic** qui s'exécute dans votre 
 
 ### Prérequis
 
-- Node.js 18+
-- npm ou yarn
-- Une clé API Anthropic
+- Un terminal ou invite de commandes
+- Un abonnement Claude (Pro, Max, Teams, ou Enterprise) OU un compte Claude Console
 
-### Installation globale
+### Installation native (recommandée)
 
+**macOS, Linux, WSL :**
 ```bash
-npm install -g @anthropic-ai/claude-code
+curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-### Configuration de la clé API
+**Windows PowerShell :**
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+### Alternatives
 
 ```bash
-# Option 1 : Variable d'environnement
-export ANTHROPIC_API_KEY="sk-ant-..."
+# Homebrew (macOS)
+brew install --cask claude-code
 
-# Option 2 : Fichier de configuration
-claude config set apiKey sk-ant-...
+# WinGet (Windows)
+winget install Anthropic.ClaudeCode
 ```
+
+### Authentification
+
+```bash
+# Lancez Claude Code
+claude
+
+# Connectez-vous via la commande
+/login
+# Suivez les instructions dans le navigateur
+```
+
+**Types de comptes supportés :**
+- Claude Pro, Max, Teams, ou Enterprise (recommandé)
+- Claude Console (accès API avec crédits prépayés)
+- Amazon Bedrock, Google Vertex AI, Microsoft Foundry
 
 ### Vérification
 
@@ -70,8 +91,17 @@ claude --version
 cd mon-projet
 claude
 
-# Ou avec une question directe
+# Avec une tâche directe
 claude "Explique-moi la structure de ce projet"
+
+# Query one-shot (affiche et quitte)
+claude -p "Quelle version de Node est requise ?"
+
+# Continuer la dernière conversation
+claude -c
+
+# Reprendre une conversation précédente
+claude -r
 ```
 
 ### Interface de base
@@ -95,8 +125,15 @@ claude "Explique-moi la structure de ce projet"
 | `/help` | Affiche l'aide |
 | `/clear` | Efface la conversation |
 | `/compact` | Compacte le contexte |
-| `/exit` | Quitte Claude Code |
-| `/config` | Affiche la configuration |
+| `/login` | Se connecter à un compte |
+| `/logout` | Se déconnecter |
+| `/resume` | Reprendre une conversation |
+| `/permissions` | Gérer les permissions |
+| `/model` | Changer le modèle |
+| `/agents` | Gérer les agents |
+| `/mcp` | Gérer les serveurs MCP |
+| `/context` | Voir les skills chargés |
+| `exit` ou Ctrl+C | Quitter Claude Code |
 
 ## Modes de permission
 
@@ -107,15 +144,21 @@ Claude Code demande votre autorisation avant certaines actions :
 | **default** | Demande permission pour actions sensibles |
 | **plan** | Mode lecture seule, planification uniquement |
 | **acceptEdits** | Auto-accepte les éditions de fichiers |
-| **dontAsk** | Auto-accepte tout (à utiliser avec précaution) |
+| **dontAsk** | Auto-refuse sauf outils pré-approuvés via `/permissions` |
+| **bypassPermissions** | Ignore toutes les permissions (environnement isolé uniquement) |
 
 ```bash
 # Lancer en mode plan
 claude --mode plan
 
-# Lancer en mode auto-accept
+# Lancer en mode auto-accept edits
 claude --mode acceptEdits
+
+# Lancer en mode dontAsk
+claude --mode dontAsk
 ```
+
+**Attention :** `bypassPermissions` ne doit être utilisé que dans des environnements isolés (conteneurs, VMs).
 
 ## Anatomie d'une session
 
@@ -175,7 +218,7 @@ claude --mode acceptEdits
 ## Quiz
 
 1. Quelle est la différence entre Claude Code et ChatGPT ?
-2. Quels sont les 4 modes de permission ?
+2. Quels sont les 5 modes de permission ?
 3. Comment effacer l'historique de conversation ?
 4. Pourquoi est-il important d'être précis dans ses demandes ?
 
