@@ -46,23 +46,41 @@ Les hooks sont déclarés dans `.claude/settings.json` :
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "command": "./hooks/check-command.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/check-command.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "command": "./hooks/validate-syntax.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/validate-syntax.sh"
+          }
+        ]
       }
     ],
     "SessionStart": [
       {
         "matcher": "startup",
-        "command": "./hooks/inject-context.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/inject-context.sh"
+          }
+        ]
       }
     ]
   }
 }
+```
+
+**Note :** Chaque hook a maintenant un tableau `hooks` contenant des objets avec `type` et `command`.
 ```
 
 ## Le champ matcher
@@ -88,13 +106,16 @@ Le matcher est une **expression régulière** :
 | `SessionEnd` | Fin session | Non |
 | `UserPromptSubmit` | Prompt soumis | Oui |
 | `PreToolUse` | Avant outil | Oui |
-| `PostToolUse` | Après outil (succès) | Oui |
+| `PermissionRequest` | Dialogue de permission affiché | Oui |
+| `PostToolUse` | Après outil (succès) | Non* |
 | `PostToolUseFailure` | Après outil (échec) | Non |
 | `SubagentStart` | Lancement sous-agent | Non |
 | `SubagentStop` | Fin sous-agent | Oui |
 | `Stop` | Claude termine | Oui |
 | `PreCompact` | Avant compaction | Non |
 | `Notification` | Notification envoyée | Non |
+
+*PostToolUse peut fournir du feedback à Claude mais ne bloque pas l'action (déjà exécutée).
 
 ---
 
@@ -143,35 +164,87 @@ exit 0
 **Sorties possibles** :
 
 ```bash
-# Bloquer
+# Bloquer (deny)
 jq -n '{
   "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
     "permissionDecisionReason": "Commande dangereuse"
   }
 }'
 
-# Autoriser
+# Autoriser (allow)
 jq -n '{
   "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
     "permissionDecision": "allow"
   }
 }'
 
-# Demander confirmation
+# Demander confirmation (ask)
 jq -n '{
   "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
     "permissionDecision": "ask",
     "permissionDecisionReason": "Êtes-vous sûr ?"
   }
 }'
 
-# Modifier les paramètres
+# Modifier les paramètres avant exécution
 jq -n '{
   "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
     "permissionDecision": "allow",
     "updatedInput": {
       "command": "rm -rf /tmp/test --interactive"
+    }
+  }
+}'
+```
+
+**Important :** `hookSpecificOutput` doit inclure `hookEventName: "PreToolUse"`.
+Les valeurs de `permissionDecision` sont : `allow`, `deny`, `ask`.
+
+---
+
+### PermissionRequest
+
+**Quand** : Quand un dialogue de permission est affiché à l'utilisateur
+**Matchers** : Noms d'outils (comme PreToolUse)
+
+**Entrée** :
+```json
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "rm -rf node_modules"
+  },
+  "permission_suggestions": [
+    { "type": "toolAlwaysAllow", "tool": "Bash" }
+  ]
+}
+```
+
+**Sortie pour autoriser** :
+```bash
+jq -n '{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "allow"
+    }
+  }
+}'
+```
+
+**Sortie pour refuser** :
+```bash
+jq -n '{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "deny",
+      "message": "Cette opération n est pas autorisée"
     }
   }
 }'
@@ -275,6 +348,7 @@ for pattern in "${dangerous[@]}"; do
     if [[ "$command" == *"$pattern"* ]]; then
         jq -n --arg cmd "$pattern" '{
             "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": ("Commande dangereuse bloquée: " + $cmd)
             }
@@ -314,6 +388,7 @@ for pattern in "${patterns[@]}"; do
     if echo "$content" | grep -qE "$pattern"; then
         jq -n '{
             "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": "Secret détecté ! Utilisez des variables d environnement."
             }

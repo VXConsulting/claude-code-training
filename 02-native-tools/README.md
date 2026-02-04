@@ -8,7 +8,7 @@
 
 ## Vue d'ensemble
 
-Claude Code dispose de **11 outils natifs** :
+Claude Code dispose de nombreux **outils natifs** :
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -18,12 +18,17 @@ Claude Code dispose de **11 outils natifs** :
 │  ────────────    │  ──────────      │  ──────────           │
 │  Read            │  Glob            │  Bash                 │
 │  Write           │  Grep            │  Task                 │
-│  Edit            │                  │                       │
+│  Edit            │  LS              │                       │
+│  MultiEdit       │                  │                       │
 ├─────────────────────────────────────────────────────────────┤
-│  Web             │  Notebook        │  MCP                  │
+│  Web             │  Notebook        │  Tâches               │
 │  ────────────    │  ──────────      │  ──────────           │
-│  WebFetch        │  Notebook        │  mcp__*               │
-│  WebSearch       │                  │                       │
+│  WebFetch        │  NotebookRead    │  TodoRead             │
+│  WebSearch       │  NotebookEdit    │  TodoWrite            │
+├─────────────────────────────────────────────────────────────┤
+│  MCP                                                        │
+│  ──────────                                                 │
+│  mcp__*                                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -102,6 +107,31 @@ Modifie un fichier existant par remplacement de chaîne.
 
 ---
 
+### MultiEdit
+
+Applique plusieurs modifications à un fichier en une seule opération.
+
+**Paramètres :**
+| Param | Type | Description |
+|-------|------|-------------|
+| `file_path` | string | Chemin absolu du fichier |
+| `edits` | array | Liste des éditions à appliquer |
+
+Chaque édition dans le tableau contient `old_string` et `new_string`.
+
+**Exemple :**
+```
+→ MultiEdit {
+    file_path: "/home/user/project/utils.ts",
+    edits: [
+      { old_string: "const", new_string: "let" },
+      { old_string: "var x", new_string: "const x" }
+    ]
+  }
+```
+
+---
+
 ## Outils de recherche
 
 ### Glob
@@ -142,6 +172,22 @@ Recherche dans le contenu des fichiers.
     pattern: "function handleLogin|const handleLogin",
     path: "/home/user/project/src"
   }
+```
+
+---
+
+### LS
+
+Liste le contenu d'un répertoire.
+
+**Paramètres :**
+| Param | Type | Description |
+|-------|------|-------------|
+| `path` | string | Chemin du répertoire à lister |
+
+**Exemple :**
+```
+→ LS { path: "/home/user/project/src" }
 ```
 
 ---
@@ -256,14 +302,50 @@ Recherche sur le web.
 
 ## Notebook
 
-### Notebook
+### NotebookRead
 
-Opérations sur les notebooks Jupyter.
+Lit le contenu d'un notebook Jupyter.
 
-**Capacités :**
-- Lire des notebooks (.ipynb)
-- Éditer des cellules
-- Exécuter du code dans le kernel
+**Paramètres :**
+| Param | Type | Description |
+|-------|------|-------------|
+| `notebook_path` | string | Chemin absolu du notebook |
+
+---
+
+### NotebookEdit
+
+Modifie une cellule d'un notebook Jupyter.
+
+**Paramètres :**
+| Param | Type | Description |
+|-------|------|-------------|
+| `notebook_path` | string | Chemin absolu du notebook |
+| `cell_id` | string | ID de la cellule à modifier |
+| `new_source` | string | Nouveau contenu de la cellule |
+| `cell_type` | string | Type : `code` ou `markdown` |
+| `edit_mode` | string | Mode : `replace`, `insert`, `delete` |
+
+---
+
+## Outils de tâches
+
+### TodoRead
+
+Lit la liste des tâches de la session courante.
+
+---
+
+### TodoWrite
+
+Crée ou met à jour des tâches pour suivre le travail en cours.
+
+**Paramètres :**
+| Param | Type | Description |
+|-------|------|-------------|
+| `todos` | array | Liste des tâches à créer/modifier |
+
+Chaque tâche contient `id`, `content`, `status` (pending/in_progress/completed).
 
 ---
 

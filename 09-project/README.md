@@ -127,6 +127,7 @@ for pattern in "${patterns[@]}"; do
     if echo "$content" | grep -qE "$pattern"; then
         jq -n '{
             "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": "Secret detected! Use environment variables instead."
             }
@@ -162,6 +163,7 @@ test_files=$(git diff --cached --name-only | grep -E '\.test\.(ts|js|py)$|__test
 if [[ -n "$src_files" && -z "$test_files" ]]; then
     jq -n '{
         "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
             "permissionDecision": "ask",
             "permissionDecisionReason": "Source files modified without tests. Are you sure?"
         }
@@ -196,6 +198,7 @@ if [[ "$command" =~ -m[[:space:]]+[\"\']([^\"\']+)[\"\'] ]]; then
     if ! echo "$message" | grep -qE '^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+'; then
         jq -n '{
             "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": "Commit message must follow conventional commits: type(scope): description"
             }
@@ -519,15 +522,25 @@ Créez un fichier `.claude/settings.json` exemple :
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "./hooks/no-secrets.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/no-secrets.sh"
+          }
+        ]
       },
       {
         "matcher": "Bash",
-        "command": "./hooks/require-tests.sh"
-      },
-      {
-        "matcher": "Bash",
-        "command": "./hooks/validate-commit.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/require-tests.sh"
+          },
+          {
+            "type": "command",
+            "command": "./hooks/validate-commit.sh"
+          }
+        ]
       }
     ]
   }

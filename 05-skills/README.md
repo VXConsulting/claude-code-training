@@ -101,21 +101,28 @@ Analyser les changements stagés et fournir un feedback constructif.
 
 | Champ | Obligatoire | Description |
 |-------|-------------|-------------|
-| `name` | Oui | Identifiant unique du skill |
-| `description` | Oui | Description courte |
-| `version` | Non | Version du skill |
-| `author` | Non | Auteur |
-| `tags` | Non | Tags pour catégorisation |
+| `name` | Non | Identifiant unique (utilise le nom du dossier si absent) |
+| `description` | Recommandé | Description et quand utiliser le skill |
+| `argument-hint` | Non | Indice pour les arguments (ex: `[issue-number]`) |
+| `disable-model-invocation` | Non | Si `true`, Claude ne peut pas invoquer automatiquement |
+| `user-invocable` | Non | Si `false`, masqué du menu `/` |
+| `allowed-tools` | Non | Outils autorisés sans demande de permission |
+| `model` | Non | Modèle à utiliser |
+| `context` | Non | `fork` pour exécuter dans un subagent isolé |
+| `agent` | Non | Type de subagent si `context: fork` |
+| `hooks` | Non | Hooks spécifiques au skill |
 
 ```yaml
 ---
 name: tdd
-description: Test-Driven Development workflow
-version: 1.0.0
-author: VXConsulting
-tags: [testing, workflow, quality]
+description: Test-Driven Development workflow. Use when implementing new features.
+disable-model-invocation: false
+allowed-tools: Read, Bash
 ---
 ```
+
+**Note :** Les commandes (`.claude/commands/`) ont été fusionnées avec les skills.
+Les fichiers existants continuent de fonctionner, mais les skills sont recommandés.
 
 ---
 
@@ -142,6 +149,46 @@ Skill { skill: "code-review" }
 ```
 Skill { skill: "code-review", args: "--strict" }
 ```
+
+### Variables de substitution
+
+| Variable | Description |
+|----------|-------------|
+| `$ARGUMENTS` | Tous les arguments passés au skill |
+| `$ARGUMENTS[N]` | Argument par index (0-based) |
+| `$0`, `$1`, etc. | Raccourcis pour `$ARGUMENTS[N]` |
+| `${CLAUDE_SESSION_ID}` | ID de la session courante |
+
+**Exemple :**
+```yaml
+---
+name: fix-issue
+description: Fix a GitHub issue by number
+---
+
+Fix GitHub issue #$ARGUMENTS following our coding standards.
+```
+
+Usage : `/fix-issue 123` → "Fix GitHub issue #123..."
+
+---
+
+### Exécution dans un subagent
+
+Utilisez `context: fork` pour exécuter le skill dans un contexte isolé :
+
+```yaml
+---
+name: deep-research
+description: Research a topic thoroughly
+context: fork
+agent: Explore
+---
+
+Research $ARGUMENTS thoroughly using Glob and Grep.
+```
+
+Le skill s'exécute dans un subagent `Explore` avec son propre contexte.
 
 ---
 

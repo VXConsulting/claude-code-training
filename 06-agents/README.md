@@ -57,6 +57,15 @@ Task {
 }
 ```
 
+### La commande /agents
+
+Utilisez `/agents` pour gérer vos agents de manière interactive :
+
+- Voir tous les agents disponibles
+- Créer de nouveaux agents (manuellement ou générés par Claude)
+- Modifier la configuration des agents existants
+- Supprimer des agents personnalisés
+
 ---
 
 ## L'outil Task
@@ -103,21 +112,35 @@ Task { prompt: "Analyse la performance", subagent_type: "general-purpose" }
 ### Structure
 
 ```
-agents/
+.claude/agents/           ← Agents projet
+└── mon-agent.md
+
+~/.claude/agents/         ← Agents utilisateur (tous projets)
 └── mon-agent.md
 ```
+
+### Frontmatter supporté
+
+| Champ | Obligatoire | Description |
+|-------|-------------|-------------|
+| `name` | Oui | Identifiant unique (lettres minuscules, tirets) |
+| `description` | Oui | Quand Claude doit déléguer à cet agent |
+| `tools` | Non | Outils autorisés (hérite tous si absent) |
+| `disallowedTools` | Non | Outils à refuser |
+| `model` | Non | `sonnet`, `opus`, `haiku`, ou `inherit` |
+| `permissionMode` | Non | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan` |
+| `skills` | Non | Skills à précharger dans le contexte de l'agent |
+| `hooks` | Non | Hooks spécifiques à cet agent |
 
 ### Format
 
 ```markdown
 ---
 name: security-reviewer
-description: Specialized agent for security code review
+description: Specialized agent for security code review. Use proactively after code changes.
 model: haiku
-tools:
-  - Read
-  - Grep
-  - Glob
+tools: Read, Grep, Glob
+disallowedTools: Write, Edit
 ---
 
 # Security Reviewer Agent
@@ -185,6 +208,7 @@ Task {
 | `opus` | Tâches complexes, architecture | $$$ |
 | `sonnet` | Usage général | $$ |
 | `haiku` | Tâches simples, rapides | $ |
+| `inherit` | Hérite du modèle parent (défaut) | - |
 
 ### Dans la définition
 

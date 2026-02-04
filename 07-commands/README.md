@@ -4,7 +4,15 @@
 
 - Comprendre les commandes slash intégrées
 - Créer des commandes personnalisées
-- Lier commandes et skills
+- Comprendre la fusion commandes/skills
+
+## Important : Fusion avec les Skills
+
+**Les commandes personnalisées ont été fusionnées avec les skills.**
+
+- Un fichier `.claude/commands/review.md` et un skill `.claude/skills/review/SKILL.md` créent tous deux `/review`
+- Les fichiers `.claude/commands/` existants continuent de fonctionner
+- **Recommandation** : Utilisez les skills (voir Module 5) pour les nouvelles créations
 
 ## Commandes intégrées
 
@@ -19,33 +27,41 @@ Claude Code fournit des commandes slash par défaut :
 | `/config` | Affiche la configuration |
 | `/model` | Change le modèle |
 | `/permissions` | Gère les permissions |
+| `/agents` | Gère les agents |
+| `/mcp` | Gère les serveurs MCP |
+| `/context` | Affiche les skills chargés |
 
 ---
 
 ## Créer des commandes personnalisées
 
-### Structure
+### Structure (ancienne méthode)
 
 ```
-commands/
+.claude/commands/
 └── ma-commande.md
 ```
 
-Ou dans un plugin :
+### Structure (méthode recommandée - skills)
+
 ```
-mon-plugin/
-└── commands/
-    └── ma-commande.md
+.claude/skills/
+└── ma-commande/
+    └── SKILL.md
 ```
 
 ### Format
+
+Les commandes utilisent le même frontmatter que les skills :
 
 ```markdown
 ---
 name: test
 description: Run tests for the project
-invokes: quick-test
+allowed-tools: Bash
 ---
+
+Run the test suite and report results.
 ```
 
 ### Champs du frontmatter
@@ -53,21 +69,30 @@ invokes: quick-test
 | Champ | Description |
 |-------|-------------|
 | `name` | Nom de la commande (sans /) |
-| `description` | Description affichée dans l'aide |
-| `invokes` | Skill à invoquer (optionnel) |
+| `description` | Description et quand utiliser |
+| `disable-model-invocation` | Si `true`, invocation manuelle uniquement |
+| `allowed-tools` | Outils autorisés |
+| `context` | `fork` pour exécuter dans un subagent |
+
+Voir le Module 5 (Skills) pour la liste complète des champs.
 
 ---
 
 ## Exemples
 
-### Commande simple → Skill
+### Commande simple
 
 ```markdown
 ---
 name: review
-description: Review staged changes
-invokes: code-review
+description: Review staged changes for quality and security
 ---
+
+Review the staged changes:
+1. Run `git diff --staged` to see changes
+2. Analyze code quality
+3. Check for security issues
+4. Provide feedback
 ```
 
 Usage :
@@ -77,52 +102,48 @@ Usage :
 
 ---
 
-### Commande avec instructions
+### Commande avec restriction d'invocation
 
 ```markdown
 ---
 name: commit
 description: Stage, review, and commit changes
-invokes: code-review
+disable-model-invocation: true
 ---
 
-After invoking the code-review skill:
-
-1. If the review passes, proceed to commit
-2. Use conventional commit format
-3. Include Co-Authored-By trailer
+Commit workflow:
+1. Review staged changes
+2. If the review passes, create a commit
+3. Use conventional commit format
+4. Include Co-Authored-By trailer
 ```
 
+Le `disable-model-invocation: true` empêche Claude d'invoquer automatiquement.
+
 ---
 
-### Commande complexe
+### Commande avec arguments
 
 ```markdown
 ---
 name: feature
 description: Full feature development workflow
-invokes: workflow
+argument-hint: [feature-description]
 ---
 
-## Feature Workflow
+Implement the feature: $ARGUMENTS
 
-This command triggers the full development workflow:
-
-1. **Planning** - Use architect agent to design
+1. **Planning** - Design the approach
 2. **Implementation** - Code the feature
 3. **Review** - Quality check
 4. **Tests** - Ensure coverage
-5. **Commit** - Proper commit with changelog
-
-Arguments:
-- `--skip-tests` : Skip test execution
-- `--quick` : Minimal review
+5. **Commit** - Proper commit
 ```
 
 Usage :
 ```
 /feature add user authentication
-/feature --quick fix login bug
+/feature fix login bug
 ```
 
 ---
@@ -180,23 +201,17 @@ description: Deploy to staging or production
 mon-plugin/
 ├── .claude-plugin/
 │   └── plugin.json
-├── commands/
-│   ├── test.md
-│   ├── commit.md
-│   └── deploy.md
 └── skills/
-    ├── code-review/
-    └── workflow/
+    ├── test/
+    │   └── SKILL.md
+    ├── commit/
+    │   └── SKILL.md
+    └── deploy/
+        └── SKILL.md
 ```
 
-### Mapping commandes → skills
-
-| Commande | Skill invoqué |
-|----------|---------------|
-| `/test` | quick-test |
-| `/commit` | code-review |
-| `/feature` | workflow |
-| `/review` | code-review |
+**Note :** Les plugins peuvent aussi avoir un dossier `commands/` pour compatibilité,
+mais le format `skills/` est recommandé.
 
 ---
 
@@ -261,15 +276,10 @@ description: Quick bug fix workflow (bypasses planning)
 /hotfix --critical Payment processing failure
 ```
 
-### 4. Associer à un skill
+### 4. Utiliser le format skills
 
-```markdown
----
-invokes: quick-fix
----
-```
-
-Cela garantit un comportement cohérent.
+Préférez créer des skills dans `.claude/skills/` plutôt que des commandes.
+Les skills offrent plus de fonctionnalités (fichiers de support, hooks, etc.).
 
 ---
 
@@ -297,8 +307,8 @@ Créez une commande `/new` qui crée différents fichiers selon l'argument :
 
 ## Quiz
 
-1. Comment lier une commande à un skill ?
-2. Où placer les fichiers de commande dans un plugin ?
+1. Quelle est la différence entre commandes et skills ?
+2. Où placer les skills dans un plugin ?
 3. Comment passer des arguments à une commande ?
 4. Quelle commande intégrée compacte le contexte ?
 

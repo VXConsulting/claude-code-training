@@ -38,12 +38,44 @@ MCP (Model Context Protocol) est un **protocole ouvert** qui permet à Claude de
 
 ## Configuration
 
-### Emplacement
+### Méthode recommandée : CLI
 
-Global : `~/.claude/settings.json`
-Projet : `projet/.claude/settings.json`
+```bash
+# Ajouter un serveur HTTP distant
+claude mcp add --transport http <nom> <url>
 
-### Format
+# Ajouter un serveur stdio local
+claude mcp add --transport stdio <nom> -- <commande> [args...]
+
+# Avec variables d'environnement
+claude mcp add --transport stdio --env API_KEY=xxx myserver -- npx server
+
+# Lister les serveurs
+claude mcp list
+
+# Supprimer un serveur
+claude mcp remove <nom>
+```
+
+### Scopes
+
+| Scope | Stockage | Disponibilité |
+|-------|----------|---------------|
+| `local` | `~/.claude.json` (défaut) | Projet courant, privé |
+| `project` | `.mcp.json` à la racine | Partagé via git |
+| `user` | `~/.claude.json` | Tous vos projets |
+
+```bash
+# Ajouter au scope projet (partagé)
+claude mcp add --scope project --transport http api https://api.example.com/mcp
+
+# Ajouter au scope user (personnel, tous projets)
+claude mcp add --scope user --transport http myapi https://myapi.com/mcp
+```
+
+### Format JSON
+
+Vous pouvez aussi configurer manuellement dans les fichiers de settings :
 
 ```json
 {
@@ -66,6 +98,14 @@ Projet : `projet/.claude/settings.json`
   }
 }
 ```
+
+### Authentification OAuth
+
+Pour les serveurs distants nécessitant OAuth :
+
+1. Ajoutez le serveur : `claude mcp add --transport http sentry https://mcp.sentry.dev/mcp`
+2. Dans Claude Code, tapez `/mcp`
+3. Suivez le flow d'authentification dans le navigateur
 
 ---
 
@@ -181,6 +221,32 @@ Claude : "Je vais créer une issue GitHub pour ce bug"
 
 ---
 
+## Ressources MCP
+
+Les serveurs MCP peuvent exposer des **ressources** accessibles via `@` :
+
+```
+> Analyse @github:issue://123 et suggère un fix
+> Compare @postgres:schema://users avec la doc
+```
+
+Tapez `@` pour voir les ressources disponibles de tous les serveurs connectés.
+
+---
+
+## Prompts MCP
+
+Les serveurs peuvent exposer des **prompts** qui deviennent des commandes :
+
+```
+> /mcp__github__list_prs
+> /mcp__jira__create_issue "Bug title" high
+```
+
+Format : `/mcp__<serveur>__<prompt>`
+
+---
+
 ## Hooks pour MCP
 
 ### Intercepter les outils MCP
@@ -191,7 +257,12 @@ Claude : "Je vais créer une issue GitHub pour ce bug"
     "PreToolUse": [
       {
         "matcher": "mcp__github__.*",
-        "command": "./hooks/github-guard.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/github-guard.sh"
+          }
+        ]
       }
     ]
   }
@@ -214,6 +285,7 @@ if [[ "$tool_name" == "mcp__github__create_issue" ]]; then
     if [[ -z "$labels" || "$labels" == "null" ]]; then
         jq -n '{
             "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
                 "permissionDecisionReason": "Les issues doivent avoir au moins un label"
             }
